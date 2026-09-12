@@ -21,12 +21,17 @@ Un **MVP desplegado** de open-booking: un buscador abierto y gratuito que devuel
 - [Domain model: Place, ContactMethod, Source, ScrapeJob](issues/03-domain-model.md) — Dominio fijado en `CONTEXT.md`: `Accommodation` con tipo, `ContactMethod` único tipado (7 canales), `Confidence` Verified/Inferred/Manual, fuentes con jerarquía determinista (web propia > registro > OSM > Wikidata), `ScrapeJob` canónico. Booking/Google Places fuera del vocabulario.
   - **Esquema D1** ya es ticketable → aterriza en [Pipeline de datos](issues/05-pipeline-datos-catalogo.md), que queda desbloqueado por esta resolución.
 - [Provisionar cuenta Cloudflare + scaffold del monorepo](issues/02-provision-cloudflare-scaffold.md) — Terreno listo: gh y wrangler en **ryarturogi**; monorepo pnpm (`apps/web` Astro 7 SSR + `apps/worker` con cron); D1 `open-booking-db` e ID `e643b921-…`, KV `OPEN_BOOKING_KV` e ID `4d0eed9a-…`; desplegado web https://open-booking.r-arturogi.workers.dev y repo público https://github.com/ryarturogi/open-booking (MIT).
+- [Pipeline de datos: catálogo desde OSM + Wikidata + registros de turismo → D1](issues/05-pipeline-datos-catalogo.md) — Ingesta pull+cron con cadencia por fuente; cruce por nombre+geo; conflicto Confidence > fecha; dirección/horario OSM como fallback; crawl fetch+regex con Browser Rendering solo free; **cobertura MVP = Colombia** (RNT + OSM + Wikidata + web propia); **cero pagos**; sin contacto → etiqueta "contacto pendiente".
+- [Accesibilidad del RNT (MinCIT) como datos abiertos](issues/06-accesibilidad-rnt.md) — RNT accesible como **datos abiertos** en datos.gov.co (Socrata): dataset `thwd-ivmp`, descarga CSV completa (679.548 filas) y API JSON sin auth; 14 campos (nombre, tipo HOTEL/APARTAMENTO/CASA/HOSTAL..., municipio, RNT#, año); licencia **CC BY-SA 4.0** (republicación permitida con atribución + derivado bajo la misma licencia); sin captcha. **IMPORTANTE**: el RNT NO trae teléfono/email/web → solo identidad/ubicación/tipo; los contactos directos vienen de OSM/Wikidata/web propia. Implicación: el proyecto derivado debe publicarse bajo CC BY-SA (compatible con MIT? → revisar en el ticket de licencia).
 
 ## Not yet specified
 
-- **Monetización/viabilidad** — free: ¿donaciones, licencia del dataset, afiliación, verificación premium?
-- **Verificación y refresco de contactos** en el tiempo (contactos caducan).
-- **Ranking de resultados, i18n, UI/design system, GDPR + opt-out** para lugares que no quieran salir.
+- **Esquema D1** — tablas concretas para Accommodation / ContactMethod / Source / enlaces de fuentes y geometría de cruce (emberged del pipeline; próximo ticket).
+- **Búsqueda por ciudad** — cómo se indexa ciudad→lugares (D1 queries vs KV) y el ranking por relevancia/Confidence.
+- **Auth + favoritos** — mecanismo de cuentas (¿Astro Sessions sobre KV? ¿mejor-auth en Worker?) y el perfil de guardado.
+- **Verificación y refresco recursivo** de contactos (los contactos caducan).
+- **Monetización/viabilidad** — free/open: donaciones, licencia del dataset, nada por ahora.
+- **UI/design system, i18n, GDPR + opt-out** para lugares que no quieran salir.
 
 ## Out of scope
 
