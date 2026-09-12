@@ -20,6 +20,7 @@ Un **MVP desplegado** de open-booking: un buscador abierto y gratuito que devuel
 - [Cloudflare Browser Rendering: viabilidad y coste para scraping](issues/04-browser-rendering-viabilidad.md) — Viables a poco coste: gratis 10 browser-min/día, pago $5/mes + $0.09/h de sobrecoste. Catálogo de 5.000 lugares ≈ **$9–13/mes**, encaja con free/open. El tráfico se identifica como bot (sin rotación de IP) → Booking usa WAF JS: solo para fuentes que lo necesiten, no como vía Booking.
 - [Domain model: Place, ContactMethod, Source, ScrapeJob](issues/03-domain-model.md) — Dominio fijado en `CONTEXT.md`: `Accommodation` con tipo, `ContactMethod` único tipado (7 canales), `Confidence` Verified/Inferred/Manual, fuentes con jerarquía determinista (web propia > registro > OSM > Wikidata), `ScrapeJob` canónico. Booking/Google Places fuera del vocabulario.
   - **Esquema D1** ya es ticketable → aterriza en [Pipeline de datos](issues/05-pipeline-datos-catalogo.md), que queda desbloqueado por esta resolución.
+- [Provisionar cuenta Cloudflare + scaffold del monorepo](issues/02-provision-cloudflare-scaffold.md) — Terreno listo: gh y wrangler en **ryarturogi**; monorepo pnpm (`apps/web` Astro 7 SSR + `apps/worker` con cron); D1 `open-booking-db` e ID `e643b921-…`, KV `OPEN_BOOKING_KV` e ID `4d0eed9a-…`; desplegado web https://open-booking.r-arturogi.workers.dev y repo público https://github.com/ryarturogi/open-booking (MIT).
 
 ## Not yet specified
 
