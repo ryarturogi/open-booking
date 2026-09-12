@@ -24,10 +24,10 @@ Un **MVP desplegado** de open-booking: un buscador abierto y gratuito que devuel
 - [Pipeline de datos: catálogo desde OSM + Wikidata + registros de turismo → D1](issues/05-pipeline-datos-catalogo.md) — Ingesta pull+cron con cadencia por fuente; cruce por nombre+geo; conflicto Confidence > fecha; dirección/horario OSM como fallback; crawl fetch+regex con Browser Rendering solo free; **cobertura MVP = Colombia** (RNT + OSM + Wikidata + web propia); **cero pagos**; sin contacto → etiqueta "contacto pendiente".
 - [Accesibilidad del RNT (MinCIT) como datos abiertos](issues/06-accesibilidad-rnt.md) — RNT accesible como **datos abiertos** en datos.gov.co (Socrata): dataset `thwd-ivmp`, descarga CSV completa (679.548 filas) y API JSON sin auth; 14 campos (nombre, tipo HOTEL/APARTAMENTO/CASA/HOSTAL..., municipio, RNT#, año); licencia **CC BY-SA 4.0** (republicación permitida con atribución + derivado bajo la misma licencia); sin captcha. **IMPORTANTE**: el RNT NO trae teléfono/email/web → solo identidad/ubicación/tipo; los contactos directos vienen de OSM/Wikidata/web propia.
 - [Licencia del dataset frente a CC BY-SA del RNT](issues/07-licencia-dataset.md) — Código **MIT**; dataset derivado **CC BY-SA (RNT) + ODbL (OSM)**, Wikidata CC0; repo usa MIT `LICENSE` + `NOTICE.md`; atribución en 3 niveles (página `/atribucion`, footer, por dato en ContactMethod). `NOTICE.md` creado.
+- [Esquema D1: accommodations, contactos, fuentes y cruce](issues/08-esquema-d1.md) — DDL en `apps/worker/migrations/0001_initial.sql`: PK UUID, `contact_methods` fila-por-valor con `is_active`+`needs_review`, `accommodation_external_ids` (splicing), `sources` jerarquizados (web_propia>rnt>osm>wikidata>manual), `scrape_jobs` auditados, índice por municipio. Validado localmente.
 
 ## Not yet specified
 
-- **Esquema D1** — tablas concretas para Accommodation / ContactMethod / Source / enlaces de fuentes y geometría de cruce (emberged del pipeline; próximo ticket).
 - **Búsqueda por ciudad** — cómo se indexa ciudad→lugares (D1 queries vs KV) y el ranking por relevancia/Confidence.
 - **Auth + favoritos** — mecanismo de cuentas (¿Astro Sessions sobre KV? ¿mejor-auth en Worker?) y el perfil de guardado.
 - **Verificación y refresco recursivo** de contactos (los contactos caducan).
