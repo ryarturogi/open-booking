@@ -1,0 +1,13 @@
+name = "open-booking-worker"
+main = "./src/index.ts"
+compatibility_date = "2026-09-12"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "open_booking_db"
+database_name = "open-booking-db"
+database_id = "e643b921-b1fb-43c2-ac83-b45bdb25159c"
+
+[[kv_namespaces]]
+binding = "OPEN_BOOKING_KV"
+id = "4d0eed9a30894a84a06e208d9c44f9e5"
