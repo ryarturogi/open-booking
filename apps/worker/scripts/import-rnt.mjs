@@ -13,7 +13,7 @@
 
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 
-const [, , csvPath = "/tmp/rnt.csv", outDir = "/tmp/rnt_chunks"] = process.argv;
+const [, , csvPath = "/tmp/rnt.csv", outDir = "/tmp/rnt_chunks", existingJson] = process.argv;
 
 const ALOJAMIENTO_CATEGORIAS = new Set([
   "VIVIENDAS TURÍSTICAS",
@@ -75,6 +75,15 @@ const headers = rows[0];
 const idx = Object.fromEntries(headers.map((h, i) => [h, i]));
 const col = (r, name) => (r[idx[name]] ?? "").trim();
 
+// Modo delta: excluye códigos ya presentes en D1 (solo importa los nuevos),
+// evitando re-upsertar ~181k filas. Pasa el JSON exportado con --json.
+const existing = new Set();
+if (existingJson) {
+  const blob = JSON.parse(readFileSync(existingJson, "utf8"));
+  for (const page of blob) for (const r of page.results) existing.add(r.external_id);
+  console.log(`delta mode: ${existing.size} códigos existentes excluidos`);
+}
+
 console.log(`parsed: ${rows.length} filas`);
 let sqlAcc = 0, sqlExt = 0, skipped = 0, chunk = 0, stmtsInChunk = 0;
 let out = "";
@@ -103,6 +112,7 @@ for (let r = 1; r < rows.length; r++) {
   const municipalityCode = col(row, "CODIGO_MUNICIPIO");
   const externalId = col(row, "CODIGO_RNT");
 
+  if (existing.has(externalId)) { skipped++; continue; }
   if (estado !== "ACTIVO") { skipped++; continue; }
   if (!ALOJAMIENTO_CATEGORIAS.has(categoria)) { skipped++; continue; }
   const typeId = TIPO_BY_SUBCATEGORIA[sub];

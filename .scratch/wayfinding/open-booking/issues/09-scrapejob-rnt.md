@@ -11,10 +11,11 @@ ScrapeJob RNT implementado y ejecutado:
 - **Origen**: descarga completa del CSV (~94 MB, 679.548 filas ACTIVO) en un único fetch. Cero-pago.
 - **Ejecución**: la ingesta completa del CSV NO corre en el Worker. Medido: parsear el CSV completo = ~2.5s de CPU y >128 MB de pico, y el plan Free limita a 10ms CPU/invocación → excedido 200×. Decisión: **import inicial local con** `apps/worker/scripts/import-rnt.mjs` (Node, sin límites) que genera chunks SQL ~1 MB y `wrangler d1 execute open-booking-db --remote --file` los aplica. El Worker queda con **cron limpio** (`0 3 * * 7` = domingo 03:00 UTC) que solo registra el health check (count de accommodations) en logs — no reprocesa el dataset.
 - **Filtro**: estado ACTIVO + solo categorías de alojamiento (VIVIENDAS TURÍSTICAS, ESTABLECIMIENTOS DE ALOJAMIENTO TURÍSTICO, OTROS TIPOS DE HOSPEDAJE TURÍSTICOS NO PERMANENTES) → 500.905 de 679.548. Mapeo sub_categoria→type_id (HOTEL→hotel, APARTAMENTO TURÍSTICO→apartamento, APARTAHOTEL→apart-estudio, HOSTAL→hostal, CASA/FINCA TURÍSTICA→bnb-casa-rural, ALBERGUE/REFUGIO→hostel, GLAMPING/CAMPAMENTO/CENTRO VACACIONAL→camping-glamping).
-- **Idempotencia**: upsert por `(source='rnt', external_id=codigo_rnt)` vía CTE resolved. Tip: el dataset tiene **433.902 filas duplicadas por CODIGO_RNT** (679k filas → ~232k códigos únicos de alojamiento); el upsert colapsa a ~191k filas únicas en D1.
+- **Idempotencia**: upsert por `(source='rnt', external_id=codigo_rnt)` vía CTE resolved. Tip: el dataset tiene **433.902 filas duplicadas por CODIGO_RNT** (679k filas → ~232k códigos únicos de alojamiento); el upsert colapsa a ~191k filas únicas.
 - **Bug FK encontrado y arreglado**: en el batch original, cuando un external_id ya existía, el segundo statement usaba el UUID nuevo de la fila (nunca creado) → FK fail. Fix: resolver el accommodation_id dentro del segundo statement (CTE), no el UUID aleatorio.
+- **Delta mode añadido al script**: `import-rnt.mjs <csv> <out> <existing-codes-json>` (exportar con `wrangler d1 execute --remote --json`) excluye códigos ya en D1 para re-sincronizar sin re-upsertar todo.
 - **scrape_jobs** registra cada run: status, items_processed/upserted/failed, log con count_in_db para verificar coherencia.
-- **Worker desplegado**: `open-booking-worker.r-arturogi.workers.dev` con cron `0 3 * * 7` de salud. El ticket-fuente de refresco incremental (reprocesar sin reparsear todo) queda como fog.
+- **Resultado en D1 remota**: 191.432 accommodations (949 municipios, 7 tipos), 191.432 external_ids rnt, verificados. Código desplegado + commit.
 Type: grilling
 Blocked by:
 
