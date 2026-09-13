@@ -8,6 +8,7 @@
  */
 
 import { runOsmJob } from "./osm";
+import { authRouter } from "./auth";
 
 export default {
   async scheduled(event, env, ctx) {
@@ -23,6 +24,8 @@ export default {
     if (url.pathname === "/api/search") {
       return searchHandler(request, url, env);
     }
+    const authRes = await authRouter(request, url, env);
+    if (authRes) return authRes;
     if (url.pathname === "/__cron/osm") {
       if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
       const secret = url.searchParams.get("secret");
