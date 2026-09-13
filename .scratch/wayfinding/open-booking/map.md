@@ -25,11 +25,13 @@ Un **MVP desplegado** de open-booking: un buscador abierto y gratuito que devuel
 - [Accesibilidad del RNT (MinCIT) como datos abiertos](issues/06-accesibilidad-rnt.md) — RNT accesible como **datos abiertos** en datos.gov.co (Socrata): dataset `thwd-ivmp`, descarga CSV completa (679.548 filas) y API JSON sin auth; 14 campos (nombre, tipo HOTEL/APARTAMENTO/CASA/HOSTAL..., municipio, RNT#, año); licencia **CC BY-SA 4.0** (republicación permitida con atribución + derivado bajo la misma licencia); sin captcha. **IMPORTANTE**: el RNT NO trae teléfono/email/web → solo identidad/ubicación/tipo; los contactos directos vienen de OSM/Wikidata/web propia.
 - [Licencia del dataset frente a CC BY-SA del RNT](issues/07-licencia-dataset.md) — Código **MIT**; dataset derivado **CC BY-SA (RNT) + ODbL (OSM)**, Wikidata CC0; repo usa MIT `LICENSE` + `NOTICE.md`; atribución en 3 niveles (página `/atribucion`, footer, por dato en ContactMethod). `NOTICE.md` creado.
 - [Esquema D1: accommodations, contactos, fuentes y cruce](issues/08-esquema-d1.md) — DDL en `apps/worker/migrations/0001_initial.sql`: PK UUID, `contact_methods` fila-por-valor con `is_active`+`needs_review`, `accommodation_external_ids` (splicing), `sources` jerarquizados (web_propia>rnt>osm>wikidata>manual), `scrape_jobs` auditados, índice por municipio. Validado localmente.
+- [ScrapeJob RNT: ingesta del dataset de datos abiertos de MinCIT](issues/09-scrapejob-rnt.md) — Implementado y ejecutado. **Import inicial local** `apps/worker/scripts/import-rnt.mjs` (chunks SQL + wrangler d1 --remote) porque plan Free (10ms CPU) no cabe parsear los 94MB; el Worker queda con **cron limpio semanal** (`0 3 * * 7`) solo health-check. Filtro alojamiento (500.905 de 679.548), upsert idempotente por CODIGO_RNT (el CSV tiene 433k duplicados → ~191k únicos), mapeo sub_categoria→type. Worker desplegado. El refresco incremental queda en fog.
 
 ## Not yet specified
 
 - **Búsqueda por ciudad** — cómo se indexa ciudad→lugares (D1 queries vs KV) y el ranking por relevancia/Confidence.
 - **Auth + favoritos** — mecanismo de cuentas (¿Astro Sessions sobre KV? ¿mejor-auth en Worker?) y el perfil de guardado.
+- **Refresco incremental del RNT** — re-sincronizar sin reparsear los 94MB (reprocesar solo cambios; el cron semanal es ahora solo health).
 - **Verificación y refresco recursivo** de contactos (los contactos caducan).
 - **Monetización/viabilidad** — free/open: donaciones, licencia del dataset, nada por ahora.
 - **UI/design system, i18n, GDPR + opt-out** para lugares que no quieran salir.
