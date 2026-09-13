@@ -1,10 +1,13 @@
 /**
- * open-booking worker — RPC de búsqueda por ciudad + job de salud.
- * Ticket 10 (búsqueda por ciudad): GET /api/search?city=bogota&limit=50&offset=0
+ * open-booking worker — RPC de búsqueda por ciudad + jobs (RNT salud, OSM contactos).
+ * Ticket 10 (búsqueda): GET /api/search?city=bogota&limit=50&offset=0
+ * Ticket 11 (OSM): cron 30 3 * * 7 + dispatch manual POST /__cron/osm (no publicado; testing).
  * El match de ciudad es dependency-free: se trae la lista de municipios (949),
  * se normaliza (case + acentos) y se puntúa en memoria; por eso aquí no se usa
  * LIKE ni collations de SQLite.
  */
+
+import { runOsmJob } from "./osm";
 
 export default {
   async scheduled(event, env, ctx) {
@@ -19,6 +22,25 @@ export default {
     }
     if (url.pathname === "/api/search") {
       return searchHandler(request, url, env);
+    }
+    if (url.pathname === "/__cron/osm") {
+      if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
+      const secret = url.searchParams.get("secret");
+      if (!env.OSM_JOB_SECRET || secret !== env.OSM_JOB_SECRET) {
+        return new Response("unauthorized", { status: 401 });
+      }
+      ctx.waitUntil(
+        (async () => {
+          try {
+            const summary = await runOsmJob(env);
+            await recordJob(env, "osm", "done", summary);
+          } catch (err) {
+            console.error("[osm] job failed:", err);
+            await recordJob(env, "osm", "failed", { error: String(err) });
+          }
+        })(),
+      );
+      return new Response("osm job started", { status: 202 });
     }
     return new Response("open-booking worker", { status: 200 });
   },
@@ -57,11 +79,20 @@ function scoreMatch(term, candidate) {
 }
 
 async function listMunicipalities(env) {
+  // KV cache: 0 lecturas D1 por búsqueda (el GROUP BY de 191k era brutal para el plan Free).
+  const cacheKey = "muni:v1";
+  const cached = await env.OPEN_BOOKING_KV.get(cacheKey);
+  if (cached) {
+    return new Map(Object.entries(JSON.parse(cached)));
+  }
   const { results } = await env.open_booking_db
     .prepare("SELECT municipality AS m, COUNT(*) AS n FROM accommodations GROUP BY municipality")
     .all();
   const index = new Map(); // normalized -> { name, count }
   for (const r of results) index.set(normalize(r.m), { name: r.m, count: r.n });
+  await env.OPEN_BOOKING_KV.put(cacheKey, JSON.stringify(Object.fromEntries(index)), {
+    expirationTtl: 86400, // 24h; invalidar al re-importar RNT
+  });
   return index;
 }
 
@@ -171,7 +202,44 @@ async function searchHandler(request, url, env) {
 async function handleScheduled(event, env) {
   const name = event.cron ?? "manual";
   console.log(`[scrapejob] trigger: ${name}`);
+
+  // Cron 2 (30 3 * * 7): job OSM de contactos. Cron 1 (0 3 * * 7): solo salud.
+  if (name === "30 3 * * 7") {
+    try {
+      const summary = await runOsmJob(env);
+      await recordJob(env, "osm", "done", summary);
+    } catch (err) {
+      console.error("[osm] job failed:", err);
+      await recordJob(env, "osm", "failed", { error: String(err) });
+    }
+    return;
+  }
   await recordHealth(env, name);
+}
+
+async function recordJob(env, slug, status, summary) {
+  try {
+    const src = await env.open_booking_db
+      .prepare("SELECT id FROM sources WHERE slug = ?")
+      .bind(slug)
+      .first();
+    if (!src) return;
+    await env.open_booking_db
+      .prepare(
+        "INSERT INTO scrape_jobs (id, source_id, status, started_at, finished_at, items_processed, items_upserted, items_failed, log) VALUES (?, ?, ?, datetime('now'), datetime('now'), ?, ?, 0, ?)",
+      )
+      .bind(
+        crypto.randomUUID(),
+        src.id,
+        status,
+        summary?.elements ?? 0,
+        summary?.matched ?? 0,
+        JSON.stringify(summary).slice(0, 900),
+      )
+      .run();
+  } catch (err) {
+    console.error(`[scrapejob] recordJob failed:`, err);
+  }
 }
 
 async function recordHealth(env, name) {

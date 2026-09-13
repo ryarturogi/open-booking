@@ -13,4 +13,9 @@ binding = "OPEN_BOOKING_KV"
 id = "4d0eed9a30894a84a06e208d9c44f9e5"
 
 [triggers]
-crons = ["0 3 * * 7"]
+crons = ["0 3 * * 7", "30 3 * * 7"]
+
+[vars]
+# Secret compartido para disparar el job OSM manualmente (POST /__cron/osm?secret=).
+# Solo testing; el cron semanal no necesita esta variable.
+OSM_JOB_SECRET = "dev-only"
