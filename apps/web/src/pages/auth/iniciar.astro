@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro';
+const error = Astro.url.searchParams.get('error');
+const { user = null } = Astro.locals;
+const query = Astro.url.searchParams.get('next');
+---
+
+<Base title="Entrar · open-booking" user={user}>
+  <section class="auth">
+    <h1>Entrar</h1>
+    {error && <p class="notice error">Email o contraseña incorrectos.</p>}
+    {user && <p>Ya tienes sesión iniciada.</p> || (
+      <form method="post" action="/api/auth/login" class="auth-form">
+        <label>
+          Email
+          <input type="email" name="email" required autocomplete="email" />
+        </label>
+        <label>
+          Contraseña
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <input type="hidden" name="next" value={query ?? ''} />
+        <button type="submit">Entrar</button>
+      </form>
+    )}
+    <p class="auth-alt">¿Aún no tienes cuenta? <a href="/auth/registrarse">Crea una</a></p>
+  </section>
+</Base>

@@ -8,7 +8,7 @@
  */
 
 import { runOsmJob } from "./osm";
-import { authRouter } from "./auth";
+import { authRouter, readSession } from "./auth";
 
 export default {
   async scheduled(event, env, ctx) {
@@ -23,6 +23,9 @@ export default {
     }
     if (url.pathname === "/api/search") {
       return searchHandler(request, url, env);
+    }
+    if (url.pathname.startsWith("/api/accommodations/") && request.method === "GET") {
+      return accommodationHandler(request, url, env);
     }
     const authRes = await authRouter(request, url, env);
     if (authRes) return authRes;
@@ -200,6 +203,69 @@ async function searchHandler(request, url, env) {
       matches: [],
     });
   }
+}
+
+async function accommodationHandler(request, url, env) {
+  const slug = url.pathname.slice("/api/accommodations/".length).toLowerCase();
+  if (!slug || slug.includes("/")) return json({ error: "missing slug" }, 400);
+
+  const rows = await env.open_booking_db
+    .prepare(
+      `SELECT a.id, a.name, a.slug, a.type_id, t.slug AS type, a.municipality, a.lat, a.lon
+       FROM accommodations a
+       LEFT JOIN accommodation_types t ON t.id = a.type_id
+       WHERE a.slug = ? ORDER BY a.name LIMIT 1`,
+    )
+    .bind(slug)
+    .all();
+  const row = rows.results?.[0];
+  if (!row) return json({ error: "not found" }, 404);
+
+  const contactRows = await env.open_booking_db
+    .prepare(
+      `SELECT cm.id, cm.channel_id, c.slug AS channel, cm.value, cm.is_active,
+              cl.slug AS confidence, cm.source, cm.needs_review
+       FROM contact_methods cm
+       JOIN contact_channels c ON c.id = cm.channel_id
+       JOIN confidence_levels cl ON cl.id = cm.confidence_id
+       WHERE cm.accommodation_id = ? AND cm.is_active = 1
+       ORDER BY cm.confidence_id ASC, c.id ASC`,
+    )
+    .bind(row.id)
+    .all();
+  const contacts = (contactRows.results ?? []).map((c) => ({
+    id: c.id,
+    channel: c.channel,
+    value: c.value,
+    confidence: c.confidence,
+    source: c.source,
+    needsReview: !!c.needs_review,
+  }));
+
+  let favorited = false;
+  if (env.AUTH_SECRET) {
+    const userId = await readSession(request.headers.get("Cookie"), env.AUTH_SECRET);
+    if (userId) {
+      const fav = await env.open_booking_db
+        .prepare("SELECT 1 FROM favorites WHERE user_id = ? AND accommodation_id = ?")
+        .bind(userId, row.id)
+        .first();
+      favorited = !!fav;
+    }
+  }
+
+  return json({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    type: row.type,
+    municipality: row.municipality,
+    lat: row.lat,
+    lon: row.lon,
+    contactPending: contacts.length === 0,
+    contacts,
+    favorited,
+  });
 }
 
 async function handleScheduled(event, env) {

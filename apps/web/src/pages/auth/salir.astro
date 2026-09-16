@@ -1,0 +1,14 @@
+---
+import Base from '../../layouts/Base.astro';
+const { user = null } = Astro.locals;
+---
+
+<Base title="Salir · open-booking" user={user}>
+  <section class="auth">
+    <h1>Salir de la cuenta</h1>
+    <form method="post" action="/api/auth/logout">
+      <button type="submit">Cerrar sesión</button>
+    </form>
+    <p><a href="/">← Volver</a></p>
+  </section>
+</Base>

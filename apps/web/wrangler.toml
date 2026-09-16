@@ -4,6 +4,9 @@ main = "@astrojs/cloudflare/entrypoints/server"
 compatibility_date = "2026-09-12"
 compatibility_flags = ["nodejs_compat"]
 
+[vars]
+DATA_WORKER_URL = "https://open-booking-worker.r-arturogi.workers.dev"
+
 [[d1_databases]]
 binding = "open_booking_db"
 database_name = "open-booking-db"

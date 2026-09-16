@@ -1,0 +1,94 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getAccommodation } from '../../lib/api';
+
+const { slug } = Astro.params;
+
+const { user = null } = Astro.locals;
+let acc;
+let fetchError = null;
+if (slug) {
+  try {
+    acc = await getAccommodation(slug, Astro.locals);
+  } catch (e) {
+    fetchError = String(e);
+  }
+}
+
+const channelLabel = (c) =>
+  ({ telefono: 'Teléfono', whatsapp: 'WhatsApp', email: 'Email', web: 'Web', redes: 'Redes', 'horario-recepcion': 'Horario de recepción', direccion: 'Dirección' })[c] ?? c;
+
+const channelHref = (c) => {
+  if (c.channel === 'web') return c.value.startsWith('http') ? c.value : `https://${c.value}`;
+  if (c.channel === 'email') return `mailto:${c.value}`;
+  if (c.channel === 'telefono') return `tel:${c.value.replace(/[^+\d]/g, '')}`;
+  if (c.channel === 'whatsapp') return `https://wa.me/${c.value.replace(/\D/g, '')}`;
+  return null;
+};
+
+const typeLabel = (t) =>
+  ({ hotel: 'Hotel', apartamento: 'Apartamento', 'apart-estudio': 'Apart-estudio', hostal: 'Hostal / Pensión', 'bnb-casa-rural': 'B&B / Casa rural', hostel: 'Hostel', 'camping-glamping': 'Camping / Glamping' })[t] ?? t;
+---
+
+<Base title={`${acc?.name ?? 'Alojamiento'} · open-booking`} user={user}>
+  {fetchError && <p class="notice error">No se pudo cargar este alojamiento. Inténtalo en unos minutos.</p>}
+
+  {!fetchError && acc && (
+    <article class="detail">
+      <header class="detail-header">
+        <div>
+          <h1>{acc.name}</h1>
+          <p class="card-meta">{typeLabel(acc.type)} · {acc.municipality}</p>
+        </div>
+        {user && (
+          <form method="post" action={`/api/favorites/${acc.id}`} class="fav-form">
+            <button type="submit" class={`fav-btn${acc.favorited ? ' is-fav' : ''}`} aria-pressed={acc.favorited}>
+              {acc.favorited ? '★ Guardado' : '☆ Guardar'}
+            </button>
+          </form>
+        )}
+        {!user && <a class="fav-login" href="/auth/iniciar">Entra para guardar</a>}
+      </header>
+
+      {acc.contactPending ? (
+        <section class="notice">Contacto pendiente. Este alojamiento aún no tiene datos de contacto verificados.</section>
+      ) : (
+        <section>
+          <h2>Contacto directo</h2>
+          <ul class="contact-list detail-contacts">
+            {acc.contacts.map((c) => {
+              const href = channelHref(c);
+              return (
+                <li class={`contact contact-${c.channel}`}>
+                  <span class="contact-channel">{channelLabel(c)}</span>
+                  {href ? (
+                    <a class="contact-value" href={href} target={c.channel === 'web' ? '_blank' : undefined} rel="nofollow noopener">
+                      {c.value}
+                    </a>
+                  ) : (
+                    <span class="contact-value">{c.value}</span>
+                  )}
+                  {c.confidence === 'inferred' && <span class="contact-badge">inferido</span>}
+                  {c.source === 'osm' && <span class="contact-badge">OSM</span>}
+                </li>
+              );
+            })}
+          </ul>
+          <p class="source-note">
+            Contactos inferidos desde OpenStreetMap. Confirma la información antes de usarla.
+          </p>
+        </section>
+      )}
+
+      {acc.lat && acc.lon && (
+        <a class="map-link" href={`https://www.openstreetmap.org/?mlat=${acc.lat}&mlon=${acc.lon}#map=17/${acc.lat}/${acc.lon}`} target="_blank" rel="nofollow noopener">
+          Ver en el mapa (OpenStreetMap)
+        </a>
+      )}
+    </article>
+  )}
+
+  {!fetchError && !acc && (
+    <section><p>Alojamiento no encontrado.</p> <a href="/">← Volver a la búsqueda</a></section>
+  )}
+</Base>

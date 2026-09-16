@@ -1,0 +1,41 @@
+---
+interface Props {
+  title?: string;
+  user?: { id: string; email: string } | null;
+}
+const { title = 'open-booking', user = null } = Astro.props;
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? 'https://open-booking.r-arturogi.workers.dev');
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content="Directorio abierto y gratuito de alojamientos en Colombia. Búsqueda por ciudad y contacto directo, sin intermediación." />
+    <link rel="canonical" href={canonicalUrl.href} />
+    <link rel="stylesheet" href="/base.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">open-booking</a>
+      <nav class="site-nav">
+        {user ? (
+          <span class="nav-user">{user.email}</span>
+        ) : (
+          <>
+            <a href="/auth/iniciar">Entrar</a>
+            <a href="/auth/registrarse">Crear cuenta</a>
+          </>
+        )}
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <a href="/atribucion">Atribución de datos</a>
+    </footer>
+  </body>
+</html>

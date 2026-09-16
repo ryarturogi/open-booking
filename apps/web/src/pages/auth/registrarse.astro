@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro';
+const error = Astro.url.searchParams.get('error');
+const { user = null } = Astro.locals;
+---
+
+<Base title="Crear cuenta · open-booking" user={user}>
+  <section class="auth">
+    <h1>Crear cuenta</h1>
+    {error && <p class="notice error">No se pudo crear la cuenta. Revisa los datos.</p>}
+    {user ? (
+      <p>Ya tienes sesión iniciada.</p>
+    ) : (
+      <form method="post" action="/api/auth/register" class="auth-form">
+        <label>
+          Email
+          <input type="email" name="email" required autocomplete="email" />
+        </label>
+        <label>
+          Contraseña
+          <input type="password" name="password" required minlength="8" autocomplete="new-password" />
+        </label>
+        <button type="submit">Crear cuenta</button>
+      </form>
+    )}
+    <p class="auth-alt">¿Ya tienes cuenta? <a href="/auth/iniciar">Entra</a></p>
+  </section>
+</Base>

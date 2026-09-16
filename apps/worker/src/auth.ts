@@ -175,30 +175,36 @@ export async function authRouter(request, url, env) {
       .bind(accommodationId)
       .first();
     if (!acc) return json({ error: "not found" }, 404);
+    const existing = await env.open_booking_db
+      .prepare("SELECT 1 FROM favorites WHERE user_id = ? AND accommodation_id = ?")
+      .bind(userId, accommodationId)
+      .first();
+    if (existing) {
+      await env.open_booking_db
+        .prepare("DELETE FROM favorites WHERE user_id = ? AND accommodation_id = ?")
+        .bind(userId, accommodationId)
+        .run();
+      return json({ ok: true, favorited: false });
+    }
     await env.open_booking_db
-      .prepare(
-        `INSERT INTO favorites (user_id, accommodation_id) VALUES (?, ?)
-         ON CONFLICT(user_id, accommodation_id) DO NOTHING`,
-      )
+      .prepare("INSERT INTO favorites (user_id, accommodation_id) VALUES (?, ?)")
       .bind(userId, accommodationId)
       .run();
     return json({ ok: true, favorited: true });
-  }
-  if (path.startsWith("/api/favorites/") && method === "DELETE") {
-    if (!env.AUTH_SECRET) return json({ error: "auth not configured" }, 503);
-    const userId = await readSession(request.headers.get("Cookie"), env.AUTH_SECRET);
-    if (!userId) return json({ error: "unauthenticated" }, 401);
-    const accommodationId = decodeURIComponent(path.slice("/api/favorites/".length));
-    await env.open_booking_db
-      .prepare("DELETE FROM favorites WHERE user_id = ? AND accommodation_id = ?")
-      .bind(userId, accommodationId)
-      .run();
-    return json({ ok: true, favorited: false });
   }
   return null;
 }
 
 async function readBody(request) {
+  const contentType = request.headers.get("Content-Type") ?? "";
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    const form = await request.formData();
+    return Object.fromEntries(form.entries());
+  }
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    return Object.fromEntries(form.entries());
+  }
   try {
     return await request.json();
   } catch {

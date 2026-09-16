@@ -1,17 +1,75 @@
 ---
-// open-booking — hello world (Astro 7 + Cloudflare Workers)
-const title = 'open-booking';
+import Base from '../layouts/Base.astro';
+import { getSearch } from '../lib/api';
+
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const error = Astro.url.searchParams.get('error');
+let result = null;
+let fetchError = null;
+if (q) {
+  try {
+    result = await getSearch(q, Astro.locals);
+  } catch (e) {
+    fetchError = String(e);
+  }
+}
+
+const { user = null } = Astro.locals;
 ---
 
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
-  </head>
-  <body>
-    <h1>{title}</h1>
-    <p>Directorio abierto de contactos directos de alojamientos.</p>
-  </body>
-</html>
+<Base title={q ? `${q} · open-booking` : 'open-booking'} user={user}>
+  <section class="hero">
+    <h1>Alojamientos en Colombia</h1>
+    <p class="tagline">Contacto directo con hoteles y alojamientos. Sin intermediación, sin reservas por aquí.</p>
+    <form method="get" action="/" class="search-form">
+      <input
+        type="search"
+        name="q"
+        value={q}
+        placeholder="Ciudad, por ejemplo: Bogotá, Medellín…"
+        aria-label="Buscar por ciudad"
+        autofocus={!q}
+      />
+      <button type="submit">Buscar</button>
+    </form>
+    {error === 'no-ok' && <p class="notice error">Sesión no válida. Entra o crea una cuenta e inténtalo de nuevo.</p>}
+  </section>
+
+  {fetchError && <p class="notice error">El catálogo no está disponible ahora mismo. Inténtalo en unos minutos.</p>}
+
+  {result && !result.items.length && (
+    <section aria-live="polite">
+      <p>No hay alojamientos registrados para «{q}». Prueba con otra ciudad.</p>
+    </section>
+  )}
+
+  {result?.items?.length > 0 && (
+    <>
+      <p class="result-meta" aria-live="polite">
+        {result.total.toLocaleString('es-ES')} alojamiento{(result.total === 1 ? '' : 's')} en {result.municipality ?? q}
+      </p>
+      <ul class="result-list">
+        {result.items.map((item) => (
+          <li class="card">
+            <a class="card-title" href={`/a/${item.slug}`}>{item.name}</a>
+            <p class="card-meta">{item.type} · {item.municipality}</p>
+            {item.contactPending ? (
+              <p class="card-pending">Contacto pendiente</p>
+            ) : (
+              <ul class="contact-list">
+                {item.contacts.slice(0, 3).map((c) => (
+                  <li class={`contact contact-${c.channel}`}>
+                    <span class="contact-channel">{c.channel}</span>
+                    <span class="contact-value">
+                      {c.channel === 'web' ? <a href={c.value} rel="nofollow" target="_blank">{c.value}</a> : c.value}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  )}
+</Base>
