@@ -7,6 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 DATA_WORKER_URL = "https://open-booking-worker.r-arturogi.workers.dev"
 
+[[services]]
+binding = "DATA_WORKER"
+service = "open-booking-worker"
+
 [[d1_databases]]
 binding = "open_booking_db"
 database_name = "open-booking-db"
