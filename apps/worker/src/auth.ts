@@ -218,7 +218,7 @@ async function registerHandler(request, env) {
   const password = String(body?.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: "invalid email" }, 400);
   if (password.length < 8) return json({ error: "password too short (min 8)" }, 400);
-  if (await rateLimited(env, `ip:${request.headers.get("CF-Connecting-IP") ?? "unknown"}`)) {
+  if (await rateLimited(env, `ip:${request.headers.get("X-Forwarded-For") ?? request.headers.get("CF-Connecting-IP") ?? "unknown"}`)) {
     return json({ error: "rate limited" }, 429);
   }
   if (await rateLimited(env, `email:${email}`)) {
@@ -244,7 +244,7 @@ async function loginHandler(request, env) {
   const email = String(body?.email ?? "").trim().toLowerCase();
   const password = String(body?.password ?? "");
   if (!email || !password) return json({ error: "missing credentials" }, 400);
-  if (await rateLimited(env, `ip:${request.headers.get("CF-Connecting-IP") ?? "unknown"}`)) {
+  if (await rateLimited(env, `ip:${request.headers.get("X-Forwarded-For") ?? request.headers.get("CF-Connecting-IP") ?? "unknown"}`)) {
     return json({ error: "rate limited" }, 429);
   }
   if (await rateLimited(env, `email:${email}`)) {

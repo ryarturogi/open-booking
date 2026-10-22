@@ -1,9 +1,7 @@
-import { env } from 'cloudflare:workers';
-
-const workerUrl = env.DATA_WORKER_URL ?? 'http://localhost:8787';
+import { workerFetch } from './worker-fetch';
 
 export async function getSearch(q: string, locals: any) {
-  const res = await fetch(`${workerUrl}/api/search?city=${encodeURIComponent(q)}&limit=50`, {
+  const res = await workerFetch(`/api/search?city=${encodeURIComponent(q)}&limit=50`, {
     headers: { cookie: locals?.cookie ?? '' },
   });
   if (!res.ok) throw new Error(`search ${res.status}`);
@@ -11,7 +9,7 @@ export async function getSearch(q: string, locals: any) {
 }
 
 export async function getAccommodation(slug: string, locals: any) {
-  const res = await fetch(`${workerUrl}/api/accommodations/${encodeURIComponent(slug)}`, {
+  const res = await workerFetch(`/api/accommodations/${encodeURIComponent(slug)}`, {
     headers: { cookie: locals?.cookie ?? '' },
   });
   if (res.status === 404) return null;
@@ -21,7 +19,7 @@ export async function getAccommodation(slug: string, locals: any) {
 
 export async function getMe(locals: any) {
   try {
-    const res = await fetch(`${workerUrl}/api/auth/me`, {
+    const res = await workerFetch('/api/auth/me', {
       headers: { cookie: locals?.cookie ?? '' },
     });
     if (!res.ok) return null;
